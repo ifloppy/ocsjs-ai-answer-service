@@ -9,10 +9,18 @@
 
 **不支持直接读取 Codex CLI 登录文件并当成普通 API Key 使用。** 两种模式互不混用，也不需要安装 ChatGPT Plugin/MCP。
 
+## ⚠️ 重要提示
+
+> [!IMPORTANT]
+> - 本项目仅供个人学习使用，不保证稳定性，也不提供技术支持。
+> - 请在遵守 OpenAI 使用条款和适用法律法规的前提下使用，不得用于非法用途。
+> - 根据《生成式人工智能服务管理暂行办法》等规定，不得向中国地区公众提供未经必要备案的生成式人工智能服务。
+> - 使用者应当遵守相关法律法规并承担相应责任；AI 生成内容不保证准确。
+
 ## 快速开始（Linux / Fish / Bash）
 
 ```bash
-git clone https://github.com/ifloppy/ocsjs-ai-answer-service.git
+git clone https://github.com/LynnGuo666/ocsjs-ai-answer-service.git
 cd ocsjs-ai-answer-service
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt

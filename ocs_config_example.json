@@ -24,6 +24,6 @@
       }
     },
     "handler": "return (res) => res.code === 1 ? [res.question, res.answer] : [res.msg, undefined]",
-    "homepage": "https://github.com/ifloppy/ocsjs-ai-answer-service"
+    "homepage": "https://github.com/LynnGuo666/ocsjs-ai-answer-service"
   }
 ]
