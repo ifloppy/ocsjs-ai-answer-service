@@ -1,5 +1,5 @@
 # 使用Python 3.9作为基础镜像
-FROM python:3.9-slim
+FROM python:3.12-slim
 
 # 设置工作目录
 WORKDIR /app
@@ -14,7 +14,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # 创建日志目录
-RUN mkdir -p logs
+RUN mkdir -p logs /home/app && chown -R 1000:1000 /app /home/app
+
+# No root privileges are required to serve local OCS requests.
+ENV HOME=/home/app
+USER 1000:1000
 
 # 暴露端口
 EXPOSE 5000

@@ -3,11 +3,10 @@
 工具函数模块
 包含缓存管理、答案处理和OpenAI API调用等辅助功能
 """
-import json
 import time
-import os
 import hashlib
-from typing import Dict, Any, Optional, Tuple
+import re
+from typing import Dict, Any, Optional
 
 class SimpleCache:
     """简单的内存缓存实现"""
@@ -36,7 +35,7 @@ class SimpleCache:
         """
         # 使用问题内容、类型和选项的组合生成哈希键
         content = f"{question}|{question_type}|{options}"
-        return hashlib.md5(content.encode('utf-8')).hexdigest()
+        return hashlib.sha256(content.encode('utf-8')).hexdigest()
     
     def get(self, question: str, question_type: str = "", options: str = "") -> Optional[str]:
         """
@@ -147,28 +146,16 @@ def parse_question_and_options(question: str, options: str, question_type: str) 
 
 
 def extract_answer(ai_response: str, question_type: str) -> str:
+    """Convert only unambiguous choice letters; preserve actual option text.
+
+    Avoid the old implementation that turned words like "China" into "A#C".
     """
-    从AI响应中提取答案
-    
-    Args:
-        ai_response: AI生成的完整响应
-        question_type: 问题类型
-        
-    Returns:
-        str: 提取的答案部分
-    """
-    # 对于多选题，确保答案格式正确（使用#分隔）
-    if question_type == "multiple":
-        # 尝试从响应中找出选项部分
-        lines = ai_response.split('\n')
-        for line in lines:
-            # 寻找可能的答案行（包含选项标识如A、B、C、D）
-            if any(opt in line.upper() for opt in ['A', 'B', 'C', 'D']) and '#' not in line:
-                # 提取所有出现的选项
-                options = [opt for opt in ['A', 'B', 'C', 'D', 'E', 'F'] if opt in line.upper()]
-                # 将它们用#连接
-                answer = '#'.join(options)
-                return answer
-    
-    # 默认返回完整响应
-    return ai_response
+    answer = ai_response.strip()
+    if question_type != "multiple" or "#" in answer:
+        return answer
+    # Model may reply "AC", "A、C" or "选项：A, C".
+    candidate = re.sub(r"^(?:答案|选项)\s*[:：]\s*", "", answer, flags=re.I)
+    if re.fullmatch(r"[A-Fa-f](?:[\s,，、/和与及]*[A-Fa-f])*", candidate):
+        letters = list(dict.fromkeys(re.findall(r"[A-Fa-f]", candidate.upper())))
+        return "#".join(letters)
+    return answer

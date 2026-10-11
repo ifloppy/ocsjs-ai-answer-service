@@ -1,2 +1,29 @@
+# Private configuration and locally granted credentials
 .env
+.env.*
+!.env.example
+*.local.json
+siwc.json
+host.json
+credentials/
+.secrets/
+.config/ocsjs-ai-answer-service/
+
+# Python dependencies, caches and runtime
+.venv/
+venv/
 __pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local data and logs
+logs/
+*.log
+*.pid
+*.sqlite3
+*.db

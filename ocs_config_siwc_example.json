@@ -1,0 +1,28 @@
+[
+  {
+    "name": "ChatGPT 官方授权题库",
+    "url": "http://127.0.0.1:5000/api/search",
+    "method": "post",
+    "type": "GM_xmlhttpRequest",
+    "contentType": "json",
+    "headers": {
+      "X-Access-Token": "REPLACE_WITH_YOUR_LOCAL_ACCESS_TOKEN",
+      "Content-Type": "application/json"
+    },
+    "data": {
+      "title": "${title}",
+      "type": "${type}",
+      "options": "${options}",
+      "images": {
+        "handler": "return (env) => env.images || []"
+      },
+      "suggestion_title": {
+        "handler": "return (env) => env.suggestion_title || env.title || \"\""
+      },
+      "suggestion_options": {
+        "handler": "return (env) => env.suggestion_options || env.options || \"\""
+      }
+    },
+    "handler": "return (res) => res.code === 1 ? [res.question, res.answer] : [res.msg, undefined]"
+  }
+]

@@ -1,0 +1,28 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    env:
+      # Tests use only mocked upstream calls and fake local credentials.
+      AUTH_MODE: siwc
+      ACCESS_TOKEN: offline-ci-placeholder
+      OPENAI_MODEL: gpt-6-luna
+      OPENAI_API_MODE: responses
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: python -m pip install -r requirements.txt
+      - run: python -m compileall -q app.py config.py multimodal.py siwc_auth.py siwc_login.py siwc_models.py
+      - run: python -m unittest discover -v -p "test_*.py"

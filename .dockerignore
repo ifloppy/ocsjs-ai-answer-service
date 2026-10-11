@@ -1,0 +1,26 @@
+# Docker COPY must never package secrets, OAuth grants or credentials.
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+*.local.json
+siwc.json
+host.json
+credentials/
+.secrets/
+.config/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage*
+htmlcov/
+logs/
+*.log
+*.pid
+*.sqlite3
+*.db

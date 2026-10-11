@@ -1,249 +1,75 @@
-# EduBrain AI - 智能题库系统
+# OCS-JS AI Answer Service
 
-这是一个基于Python和OpenAI API的新一代智能题库服务，专为[OCS (Online Course Script)](https://github.com/ocsjs/ocsjs)设计，可以通过AI自动回答题目。此服务实现了与OCS AnswererWrapper兼容的API接口，方便用户将AI能力整合到OCS题库搜索中。
+为 [OCS-JS](https://github.com/ocsjs/ocsjs) 提供兼容 AnswererWrapper 的本地 AI 题库接口，支持纯文字题及 **OCS 5.1.0 图片题优化**。服务基于 Flask + OpenAI Responses API。
 
-## ⚠️ 重要提示
+支持两种独立鉴权方式：
 
-> [!IMPORTANT]  
-> - 本项目仅供个人学习使用，不保证稳定性，且不提供任何技术支持。
-> - 使用者必须在遵循 OpenAI 的[使用条款](https://openai.com/policies/terms-of-use)以及**法律法规**的情况下使用，不得用于非法用途。
-> - 根据[《生成式人工智能服务管理暂行办法》](http://www.cac.gov.cn/2023-07/13/c_1690898327029107.htm)的要求，请勿对中国地区公众提供一切未经备案的生成式人工智能服务。
-> - 使用者应当遵守相关法律法规，承担相应的法律责任
-> - 服务不对AI生成内容的准确性做出保证
+- **`AUTH_MODE=siwc`（推荐）**：通过 OpenAI 官方 **Sign in with ChatGPT** 授权开源应用，在账户允许的范围内使用 ChatGPT 计划额度，无需单独充值 API。受账号资格、模型可用性与订阅额度限制。
+- **`AUTH_MODE=api_key`**：使用单独计费的 OpenAI API Key 或兼容供应商密钥。
 
-## 功能特点
+**不支持直接读取 Codex CLI 登录文件并当成普通 API Key 使用。** 两种模式互不混用，也不需要安装 ChatGPT Plugin/MCP。
 
-- 💡 **AI驱动**：使用OpenAI API生成智能回答
-- 🔄 **OCS兼容**：完全兼容OCS的AnswererWrapper题库接口
-- 🚀 **高性能**：内存缓存优化，快速响应请求
-- 🔒 **安全可靠**：支持访问令牌验证，保护API调用
-- 💬 **多种题型**：支持单选、多选、判断、填空等题型
-- 📊 **数据统计**：实时监控服务状态和使用情况
-- 🌐 **响应式UI**：支持多设备访问的现代化界面
-- 📱 **移动友好**：完美适配手机和平板设备
-
-## 系统要求
-
-- Python 3.7+
-- OpenAI API密钥（需要单独申请）
-
-## 快速开始
-
-### 1. 克隆代码库
+## 快速开始（Linux / Fish / Bash）
 
 ```bash
-git clone https://github.com/LynnGuo666/ocsjs-ai-answer-service.git
+git clone https://github.com/ifloppy/ocsjs-ai-answer-service.git
 cd ocsjs-ai-answer-service
-```
-
-### 2. 安装依赖
-
-```bash
-pip install -r requirements.txt
-```
-
-### 3. 配置环境变量
-
-将`.env.example`复制为`.env`并填写必要的配置信息：
-
-```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
 cp .env.example .env
 ```
 
-编辑`.env`文件，至少需要填写OpenAI API密钥：
+用 `.venv/bin/python` 运行不依赖 Shell 类型；如果要手动激活虚拟环境，Fish 使用 `source .venv/bin/activate.fish`，Bash/Zsh 使用 `source .venv/bin/activate`。
 
-```
-OPENAI_API_KEY=your_api_key_here
-```
+### A. 通过 ChatGPT 订阅共享额度
 
-### 4. 启动服务
+1. 使用 `.venv/bin/python siwc_login.py` 打开 OpenAI 官方授权页面，自行确认应用权限。凭据保存在 `~/.config/ocsjs-ai-answer-service/siwc.json`，不会使用 Codex 登录凭据。
+2. 执行 `.venv/bin/python siwc_models.py` 查询**当前账户实际可用**的模型。
+3. 编辑 `.env`，设置 `AUTH_MODE=siwc`、`OPENAI_MODEL=<可用模型>`，以及随机 `ACCESS_TOKEN`（使用 `openssl rand -hex 24` 生成）。`ACCESS_TOKEN` 是**本机题库服务的密钥**，不是 OpenAI OAuth Token。
+4. 运行 `.venv/bin/python app.py`，访问 `http://127.0.0.1:5000/api/health`，应显示 `auth_mode=siwc_plan`。
 
-```bash
-python app.py
-```
+首次运行还没有本地题库配置时，复制 `ocs_config_siwc_example.json` 为 `ocs_config_siwc.local.json`，填入对应的 `X-Access-Token`。本地 `*.local.json` 会被 Git 忽略。
 
-服务将默认运行在`http://localhost:5000`
+### B. 使用普通 API Key
 
-### 5. 在OCS中配置使用
+在 `.env` 中设置 `AUTH_MODE=api_key` 和 `OPENAI_API_KEY=...`，选择供应商支持的模型；调用产生的费用由 API 供应商收取。访问控制仍建议使用单独的 `ACCESS_TOKEN`。
 
-在OCS的自定义题库配置中添加如下配置：
+## OCS 5.1.0 题库配置（支持图片题）
 
-```json
-[
-  {
-    "name": "AI智能题库",
-    "url": "http://localhost:5000/api/search",
-    "method": "get",
-    "type": "GM_xmlhttpRequest",
-    "contentType": "json",
-    "data": {
-      "title": "${title}",
-      "type": "${type}",
-      "options": "${options}"
-    },
-    "handler": "return (res)=> res.code === 1 ? [res.question, res.answer] : [res.msg, undefined]"
-  }
-]
-```
+在 OCS 中粘贴 `ocs_config_siwc.local.json` 的完整 JSON；公开示例见 `ocs_config_siwc_example.json`（其中不包含有效密钥）。这是 **POST + JSON** 配置：
 
-## API接口说明
+- 原字段 `title`、`options`、`type` 保留。
+- `images` 使用 `{"handler":"return (env) => env.images || []"}` 返回图片数组，而**不是**字符串 `"${images}"`。
+- `suggestion_title` / `suggestion_options` 带 `[图片1]` 等占位符，用于让模型识别图片所对应的题干或选项。
+- OCS 的「通用 → 全局设置 → 高级设置 → 图片题优化」应开启。
+- 旧版 `GET /api/search` 仍兼容纯文本题，但图片题请使用 POST 模板。
 
-### 搜索接口
+**连接检测 403 已修复**：OCS 5.1.0 的题库连接测试会发送**不带自定义请求头的 HEAD**。服务对 `HEAD /api/search` 返回 204；真正答题的 GET/POST 仍要求正确的 `X-Access-Token`。连接测试通过不代表模型答案一定准确，请用实际题目复核。
 
-**URL**: `/api/search`
+## 文档
 
-**方法**: `GET` 或 `POST`
+- [SIWC_SETUP.md](SIWC_SETUP.md)：ChatGPT 授权、模型查询、OCS 图片题配置和 401/403 排查
+- [api_docs.md](api_docs.md)：`/api/search` 请求/响应、限额和状态码
+- [ocs_config_siwc_example.json](ocs_config_siwc_example.json)：可公开发布的题库配置示例
 
-**参数**:
+## 本地管理面板与测试
 
-| 参数名   | 类型   | 必填 | 说明                                                     |
-|---------|--------|------|----------------------------------------------------------|
-| title   | string | 是   | 题目内容                                                 |
-| type    | string | 否   | 题目类型 (single-单选, multiple-多选, judgement-判断, completion-填空) |
-| options | string | 否   | 选项内容，通常是A、B、C、D选项的文本                       |
+打开 `http://127.0.0.1:5000/dashboard` 会要求 HTTP Basic 登录：**用户名 `ocs`，密码是本地 `ACCESS_TOKEN`**。答题记录仅在内存里保留最近 100 条；网页响应禁止缓存，第三方站点无法通过宽松 CORS 读取它。浏览器 HTTP Basic 仅用于查看管理面板，不授权实际答题请求。
 
-**成功响应**:
-
-```json
-{
-  "code": 1,
-  "question": "问题内容",
-  "answer": "AI生成的答案"
-}
-```
-
-**失败响应**:
-
-```json
-{
-  "code": 0,
-  "msg": "错误信息"
-}
-```
-
-### 健康检查接口
-
-**URL**: `/api/health`
-
-**方法**: `GET`
-
-**响应**:
-
-```json
-{
-  "status": "ok",
-  "message": "AI题库服务运行正常",
-  "version": "1.0.0",
-  "cache_enabled": true,
-  "model": "gpt-3.5-turbo"
-}
-```
-
-### 缓存清理接口
-
-**URL**: `/api/cache/clear`
-
-**方法**: `POST`
-
-**响应**:
-
-```json
-{
-  "success": true,
-  "message": "缓存已清除"
-}
-```
-
-### 统计信息接口
-
-**URL**: `/api/stats`
-
-**方法**: `GET`
-
-**响应**:
-
-```json
-{
-  "version": "1.0.0",
-  "uptime": 1621234567.89,
-  "model": "gpt-3.5-turbo",
-  "cache_enabled": true,
-  "cache_size": 123
-}
-```
-
-## 安全设置
-
-如果你想增加安全性，可以在`.env`文件中设置访问令牌：
-
-```
-ACCESS_TOKEN=your_secret_token_here
-```
-
-设置后，所有API请求都需要包含此令牌，可以通过以下两种方式之一传递：
-
-1. HTTP头部: `X-Access-Token: your_secret_token_here`
-2. URL参数: `?token=your_secret_token_here`
-
-## 部署建议
-
-### 使用Gunicorn部署
-
-对于生产环境，建议使用Gunicorn作为WSGI服务器：
+只检查连接与鉴权（不消耗模型请求）：
 
 ```bash
-gunicorn -w 4 -b 0.0.0.0:5000 app:app
+.venv/bin/python test_service.py
 ```
 
-### 使用Docker部署
+需要实际测试模型时，显式加 `--inference`。运行离线单测：`.venv/bin/python -m unittest test_siwc.py test_multimodal.py`。
 
-可以使用以下Dockerfile创建容器镜像：
+## 安全和部署
 
-```Dockerfile
-FROM python:3.9-slim
+`.env`、`*.local.json`、`siwc.json`、本地凭据、日志、缓存和虚拟环境不会被提交到 Git；`.dockerignore` 还防止私密文件随 Docker `COPY . .` 进入镜像。**请勿提交或分享你的本地 JSON / OAuth 凭据**。
 
-WORKDIR /app
+不要将 `ACCESS_TOKEN` 放入 URL 查询参数；真实答题仅支持请求头（或本地面板的 HTTP Basic）。建议始终以 `HOST=127.0.0.1` 在本机运行，不要将订阅授权接口作为公开代理、收费转发服务。SIWC 的订阅共享额度有资格和使用限制，不能视作无限免费 API。
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+如使用容器，Compose 已配置容器内部监听 `0.0.0.0`、宿主机仅监听 `127.0.0.1`，且通过目录挂载（而不是 Docker COPY）访问 OAuth 凭据。容器默认以 UID/GID 1000 运行；宿主机不是这个用户 ID 时，请设置 `OCS_UID` / `OCS_GID` 与本机 `id -u` / `id -g` 一致，否则无法读取/刷新 0600 凭据。
 
-COPY . .
-
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "app:app"]
-```
-
-构建并运行Docker容器：
-
-```bash
-docker build -t ai-answer-service .
-docker run -p 5000:5000 --env-file .env ai-answer-service
-```
-
-## 常见问题
-
-### 1. AI答案准确性
-
-AI生成的答案可能存在以下情况：
-- 选项内容与原题不完全匹配
-- 判断题答案可能不准确
-- 填空题可能给出模糊或错误答案
-- 多选题可能遗漏或多选
-
-建议：
-- 始终与原题选项进行对照
-- 保持独立思考和判断
-- 有疑问时以人工判断为准
-- 将AI答案作为参考，而非唯一依据
-
-### 2. 多选题答案格式
-
-对于多选题，OCS期望的答案格式是用`#`分隔的选项，例如`A#B#C`。本服务已经处理了这个格式，会自动将OpenAI返回的多选答案转换为此格式。
-
-### 2. API请求限制
-
-注意OpenAI API有使用限制和费用。确保你的账户有足够的额度来处理预期的请求量。
-
-### 3. 网络连接问题
-
-确保部署此服务的服务器能够访问OpenAI API（api.openai.com）。某些地区可能需要代理服务。
-
+本项目基于 [LynnGuo666/ocsjs-ai-answer-service](https://github.com/LynnGuo666/ocsjs-ai-answer-service) 改造。仅供合规的个人学习、开发及已获允许的环境使用，模型回答可能有误，请自行校验。

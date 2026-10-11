@@ -1,107 +1,68 @@
-# -*- coding: utf-8 -*-
+"""Explicit live-service smoke test (never runs automatically in unit tests).
+
+Run: python test_service.py             # only free health/security probes
+Run: python test_service.py --inference # spends one model request
 """
-测试脚本
-用于测试AI题库服务是否正常工作
-"""
-import requests
+import argparse
 import json
-import sys
 import os
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
+
 from dotenv import load_dotenv
 
-# 加载环境变量
 load_dotenv()
+DEFAULT_BASE = "http://127.0.0.1:5000"
 
-# 服务URL
-SERVICE_URL = os.getenv("SERVICE_URL", "http://localhost:5000")
 
-def test_health():
-    """测试健康检查接口"""
-    print("测试健康检查接口...")
+def check_http(base, path, expected, method="GET", payload=None, token=None):
+    headers = {}
+    if token:
+        headers["X-Access-Token"] = token
+    if payload is not None:
+        headers["Content-Type"] = "application/json"
+    request = Request(
+        base + path,
+        data=json.dumps(payload).encode("utf-8") if payload is not None else None,
+        method=method,
+        headers=headers,
+    )
     try:
-        response = requests.get(f"{SERVICE_URL}/api/health")
-        print(f"状态码: {response.status_code}")
-        print(f"响应内容: {json.dumps(response.json(), indent=2, ensure_ascii=False)}")
-        print("健康检查接口测试成功！\n")
-        return True
-    except Exception as e:
-        print(f"健康检查接口测试失败: {str(e)}")
-        return False
+        with urlopen(request, timeout=60) as response:
+            status = response.status
+            body = response.read()
+    except HTTPError as exc:
+        status = exc.code
+        body = exc.read()
+    assert status == expected, f"{method} {path}: expected HTTP {expected}, got {status}"
+    return json.loads(body) if body else None
 
-def test_search(question, question_type=None, options=None):
-    """测试搜索接口"""
-    print(f"测试搜索接口: {question}")
-    
-    params = {
-        "title": question
-    }
-    
-    if question_type:
-        params["type"] = question_type
-        
-    if options:
-        params["options"] = options
-    
-    try:
-        print("发送请求...")
-        print(f"参数: {json.dumps(params, indent=2, ensure_ascii=False)}")
-        
-        response = requests.get(f"{SERVICE_URL}/api/search", params=params)
-        
-        print(f"状态码: {response.status_code}")
-        result = response.json()
-        print(f"响应内容: {json.dumps(result, indent=2, ensure_ascii=False)}")
-        
-        if result.get("code") == 1:
-            print("搜索接口测试成功！\n")
-            return True
-        else:
-            print(f"搜索接口测试失败: {result.get('msg', '未知错误')}\n")
-            return False
-    except Exception as e:
-        print(f"搜索接口测试失败: {str(e)}\n")
-        return False
 
 def main():
-    """主测试函数"""
-    print("=" * 50)
-    print("AI题库服务测试脚本")
-    print("=" * 50)
-    
-    # 测试健康检查接口
-    if not test_health():
-        print("健康检查失败，请确认服务是否正常运行。")
-        sys.exit(1)
-    
-    # 测试单选题
-    test_search(
-        "中国的首都是哪个城市？", 
-        "single",
-        "A. 上海\nB. 北京\nC. 广州\nD. 深圳"
-    )
-    
-    # 测试多选题
-    test_search(
-        "以下哪些是中国的一线城市？", 
-        "multiple",
-        "A. 北京\nB. 上海\nC. 广州\nD. 深圳\nE. 成都\nF. 杭州"
-    )
-    
-    # 测试判断题
-    test_search(
-        "地球是太阳系中第三颗行星。", 
-        "judgement"
-    )
-    
-    # 测试填空题
-    test_search(
-        "《红楼梦》的作者是_______。", 
-        "completion"
-    )
-    
-    print("=" * 50)
-    print("测试完成！")
-    print("=" * 50)
+    parser = argparse.ArgumentParser(description="OCS AI 答题服务安全自检")
+    parser.add_argument("--url", default=os.getenv("SERVICE_URL", DEFAULT_BASE))
+    parser.add_argument("--inference", action="store_true", help="实际调用一次 GPT，会消耗模型额度")
+    args = parser.parse_args()
+    base = args.url.rstrip("/")
+    token = os.getenv("ACCESS_TOKEN")
+    health = check_http(base, "/api/health", 200)
+    assert health["status"] == "ok"
+    check_http(base, "/api/search?t=probe", 204, method="HEAD")
+    if token:
+        check_http(base, "/api/search", 403, method="POST", payload={"title": "未授权测试"})
+        if args.inference:
+            result = check_http(
+                base, "/api/search", 200, method="POST", token=token,
+                payload={"title": "中国的首都是哪里？", "type": "single",
+                         "options": "A. 北京\nB. 上海", "images": [],
+                         "suggestion_title": "", "suggestion_options": ""},
+            )
+            assert result.get("code") == 1
+            print("模型答题成功，返回：", result["answer"])
+    elif args.inference:
+        parser.error("请求推理前必须设置本地 ACCESS_TOKEN")
+    print("健康、连通性与鉴权检查通过。")
+
 
 if __name__ == "__main__":
     main()

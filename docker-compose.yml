@@ -1,19 +1,32 @@
-version: '3'
-
 services:
   ai-answer-service:
     build:
       context: .
       dockerfile: Dockerfile
+    # The app is only reachable from the host, not the whole LAN.
     ports:
-      - "5000:5000"
-    volumes:
-      - ./logs:/app/logs
+      - "127.0.0.1:5000:5000"
+    # Match the desktop user's ID to permit secure 0600 OAuth token refresh.
+    user: "${OCS_UID:-1000}:${OCS_GID:-1000}"
+    environment:
+      # Container must listen inside its network namespace.
+      HOST: "0.0.0.0"
+      DEBUG: "False"
+      SIWC_AUTH_FILE: "/home/app/.config/ocsjs-ai-answer-service/siwc.json"
     env_file:
       - .env
+    volumes:
+      - ./logs:/app/logs
+      # SIWC credentials live OUTSIDE the source tree/image. This mount lets
+      # the container read and rotate refresh tokens after explicit login.
+      - ${HOME}/.config/ocsjs-ai-answer-service:/home/app/.config/ocsjs-ai-answer-service:rw
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/api/health', timeout=5)"
       interval: 30s
       timeout: 10s
       retries: 3

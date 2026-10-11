@@ -3,181 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduBrain AI - 智能题库统计面板</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/datatables.net-bs5@1.13.8/css/dataTables.bootstrap5.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/datatables.net-responsive-bs5@2.5.0/css/responsive.bootstrap5.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css">
+    <meta name="referrer" content="no-referrer">
+    <title>EduBrain AI · 本地统计</title>
+    <style>
+        :root { color-scheme: light dark; font-family: system-ui, -apple-system, sans-serif; }
+        body { margin: 0; background: Canvas; color: CanvasText; line-height: 1.6; }
+        main, header { max-width: 1050px; padding: 1.25rem; margin: auto; }
+        header { display: flex; gap: 1.5rem; align-items: center; }
+        header a { color: inherit; }
+        .stats { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; }
+        .stat { flex: 1 1 160px; border: 1px solid #8a8a8a55; border-radius: 12px; padding: 1rem; }
+        .stat small { display: block; color: GrayText; }
+        .stat strong { display: block; font-size: 1.2rem; }
+        .table-wrap { max-width: 100%; overflow: auto; }
+        table { border-collapse: collapse; width: 100%; text-align: left; }
+        th, td { padding: .7rem; border-bottom: 1px solid #8a8a8a55; vertical-align: top; }
+        th { white-space: nowrap; }
+        .preview { max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        button { font: inherit; cursor: pointer; border: 1px solid #8a8a8a66; padding: .3rem .75rem; border-radius: 8px; background: ButtonFace; color: ButtonText; }
+        button:hover { filter: brightness(.95); }
+        dialog { border: 1px solid #8a8a8a55; border-radius: 12px; max-width: min(90vw, 650px); width: 100%; background: Canvas; color: CanvasText; }
+        dialog::backdrop { background: #0008; }
+        dialog pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: .75rem; border-radius: 8px; background: #8a8a8a15; }
+        .dialog-head { display: flex; justify-content: space-between; align-items: center; }
+        footer { margin: 2rem 0; text-align: center; color: GrayText; }
+    </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="/">EduBrain AI</a>
-            <div class="collapse navbar-collapse">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/dashboard">统计面板</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/docs">API文档</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-
-    <div class="container mt-4">
-        <div class="row">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="card-title mb-0">系统信息</h5>
-                    </div>
-                    <div class="card-body">
-                        <p><strong>版本：</strong>{{ version }}</p>
-                        <p><strong>缓存状态：</strong>{{ "已启用" if cache_enabled else "未启用" }}</p>
-                        <p><strong>缓存数量：</strong>{{ cache_size }}条</p>
-                        <p><strong>使用模型：</strong>{{ model }}</p>
-                        <p><strong>运行时长：</strong>{{ uptime }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row mt-4">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0">最近问答记录</h5>
-                        <button class="btn btn-light btn-sm" onclick="clearCache()">清除缓存</button>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table id="qa-records" class="table table-striped table-hover dt-responsive nowrap" style="width:100%">
-                                <thead>
-                                    <tr>
-                                        <th>时间</th>
-                                        <th>问题类型</th>
-                                        <th>问题内容</th>
-                                        <th>选项</th>
-                                        <th>AI答案</th>
-                                        <th>操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for record in records %}
-                                    <tr>
-                                        <td data-order="{{ record.timestamp }}">{{ record.time }}</td>
-                                        <td>{{ record.type }}</td>
-                                        <td>
-                                            <div class="text-truncate" style="max-width: 300px;" title="{{ record.question }}">
-                                                {{ record.question }}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div class="text-truncate" style="max-width: 200px;" title="{{ record.options }}">
-                                                {{ record.options }}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div class="text-truncate" style="max-width: 200px;" title="{{ record.answer }}">
-                                                {{ record.answer }}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <button class="btn btn-sm btn-info" onclick="showDetail('{{ record.question|tojson|safe }}', '{{ record.options|tojson|safe }}', '{{ record.answer|tojson|safe }}')">详情</button>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+<header>
+    <strong>EduBrain AI</strong>
+    <a href="/">首页</a>
+    <a href="/docs">API 文档</a>
+</header>
+<main>
+    <h1>本地答题统计</h1>
+    <p>仅本机授权用户可查看；记录只保存在当前服务进程内存中。</p>
+    <div class="stats">
+        <div class="stat"><small>服务版本</small><strong>{{ version }}</strong></div>
+        <div class="stat"><small>模型</small><strong>{{ model }}</strong></div>
+        <div class="stat"><small>运行时长</small><strong>{{ uptime }}</strong></div>
+        <div class="stat"><small>答案缓存</small><strong>{{ cache_size if cache_enabled else "未启用" }}</strong></div>
     </div>
-
-    <footer class="footer mt-5 py-3 bg-light">
-        <div class="container text-center">
-            <p>EduBrain AI - 智能题库系统 v{{ version }}</p>
-            <p>Powered by OpenAI API | 作者：LynnGuo666</p>
-            <p><small>© 2024-2025 All Rights Reserved</small></p>
-        </div>
-    </footer>
-
-    <!-- Modal -->
-    <div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">问答详情</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <h6>问题：</h6>
-                        <pre class="border rounded p-3 bg-light" id="modal-question"></pre>
-                    </div>
-                    <div class="mb-3">
-                        <h6>选项：</h6>
-                        <pre class="border rounded p-3 bg-light" id="modal-options"></pre>
-                    </div>
-                    <div class="mb-3">
-                        <h6>答案：</h6>
-                        <pre class="border rounded p-3 bg-light" id="modal-answer"></pre>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <h2>最近答题记录</h2>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th>时间</th><th>题型</th><th>题目</th><th>答案</th><th>详情</th></tr>
+            </thead>
+            <tbody>
+                {% for record in records|reverse %}
+                <tr>
+                    <td>{{ record.time }}</td>
+                    <td>{{ record.type }}</td>
+                    <td class="preview" title="{{ record.question }}">{{ record.question }}</td>
+                    <td class="preview">{{ record.answer }}</td>
+                    <td><button class="detail-button" type="button"
+                                data-question="{{ record.question }}"
+                                data-options="{{ record.options }}"
+                                data-answer="{{ record.answer }}">查看</button></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5">暂无记录</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/datatables.net@1.13.8/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/datatables.net-bs5@1.13.8/js/dataTables.bootstrap5.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/datatables.net-responsive@2.5.0/js/dataTables.responsive.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/datatables.net-responsive-bs5@2.5.0/js/responsive.bootstrap5.min.js"></script>
-
-    <script>
-    $(document).ready(function() {
-        $('#qa-records').DataTable({
-            responsive: true,
-            order: [[0, 'desc']],
-            language: {
-                url: 'https://cdn.datatables.net/plug-ins/1.13.8/i18n/zh.json'
-            },
-            pageLength: 10,
-            lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]]
+</main>
+<dialog id="detail-dialog" aria-label="答题详情">
+    <div class="dialog-head"><h2>答题详情</h2><button type="button" id="close-dialog" aria-label="关闭详情">关闭</button></div>
+    <h3>题目</h3><pre id="detail-question"></pre>
+    <h3>选项</h3><pre id="detail-options"></pre>
+    <h3>模型答案</h3><pre id="detail-answer"></pre>
+</dialog>
+<footer>EduBrain AI · 私有本地管理界面</footer>
+<script>
+(() => {
+    const dialog = document.getElementById('detail-dialog');
+    document.getElementById('close-dialog').addEventListener('click', () => dialog.close());
+    document.querySelectorAll('.detail-button').forEach(button => {
+        button.addEventListener('click', () => {
+            document.getElementById('detail-question').textContent = button.dataset.question || '';
+            document.getElementById('detail-options').textContent = button.dataset.options || '无';
+            document.getElementById('detail-answer').textContent = button.dataset.answer || '';
+            dialog.showModal();
         });
     });
-
-    function clearCache() {
-        if (confirm('确定要清除所有缓存吗？')) {
-            fetch('/api/cache/clear', {
-                method: 'POST',
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('缓存已清除');
-                    location.reload();
-                } else {
-                    alert('清除缓存失败: ' + data.message);
-                }
-            })
-            .catch(error => {
-                alert('操作失败: ' + error);
-            });
-        }
-    }
-
-    function showDetail(question, options, answer) {
-        document.getElementById('modal-question').textContent = question;
-        document.getElementById('modal-options').textContent = options || '无';
-        document.getElementById('modal-answer').textContent = answer;
-        new bootstrap.Modal(document.getElementById('detailModal')).show();
-    }
-    </script>
+})();
+</script>
 </body>
 </html>
